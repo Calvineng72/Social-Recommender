@@ -39,7 +39,7 @@ class Social_Aggregator(tf.keras.layers.Layer): #TODO: or is it layers.Layer
             u_rep = self.u2e.weight[nodes[i]]
 
             att_w = self.att(e_u, u_rep, num_neighs)
-            att_history = tf.matmul(e_u.t(), att_w).t()
+            att_history = tf.transpose(tf.matmul(e_u.T, att_w))
             embed_matrix[i] = att_history
         to_feats = embed_matrix
 
