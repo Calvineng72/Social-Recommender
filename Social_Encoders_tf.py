@@ -1,7 +1,7 @@
-import torch
-import torch.nn as nn
-from torch.nn import init
-import torch.nn.functional as F
+# import torch
+# import torch.nn as nn
+# from torch.nn import init
+# import torch.nn.functional as F
 
 import tensorflow as tf
 
@@ -18,8 +18,8 @@ class Social_Encoder(tf.keras.layers.Layer): #layers.Layer?
             self.base_model = base_model
         self.embed_dim = embed_dim
         self.device = cuda
-        self.linear1 = nn.Linear(2 * self.embed_dim, self.embed_dim)  #
-        # torch.nn.Linear(in_features, out_features, bias=True, device=None, dtype=None)
+        # self.linear1 = nn.Linear(2 * self.embed_dim, self.embed_dim)  #
+        # NOTE: torch.nn.Linear(in_features, out_features, bias=True, device=None, dtype=None)
         self.linear1 = tf.Dense(self.embed_dim, input_shape=2 * self.embed_dim)
 
     def call(self, nodes):
