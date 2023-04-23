@@ -27,7 +27,7 @@ class Social_Encoder(tf.keras.layers.Layer): #layers.Layer?
         to_neighs = []
         for node in nodes:
             to_neighs.append(self.social_adj_lists[int(node)])
-        neigh_feats = self.aggregator.forward(nodes, to_neighs)  # user-user network
+        neigh_feats = self.aggregator.call(nodes, to_neighs)  # user-user network
 
         # self_feats = self.features(torch.LongTensor(nodes.cpu().numpy())).to(self.device)
         self_feats = tf.Variable(nodes, dtype=tf.int16)  #TODO: unsure about this
