@@ -191,7 +191,7 @@ def main():
     device = tf.device("/GPU:0" if use_cuda else "/device:CPU:0")
 
     embed_dim = args.embed_dim
-    dir_data = './data/toy_dataset'
+    dir_data = './data/douban'
 
     path_data = dir_data + ".pickle"
     data_file = open(path_data, 'rb')
