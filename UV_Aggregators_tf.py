@@ -1,10 +1,10 @@
-import torch
-import torch.nn as nn
-from torch.autograd import Variable
-import torch.nn.functional as F
+# import torch
+# import torch.nn as nn
+# from torch.autograd import Variable
+# import torch.nn.functional as F
 import numpy as np
 import random
-from Attention import Attention
+from Attention_tf import Attention
 import tensorflow as tf
 
 
@@ -13,7 +13,7 @@ class UV_Aggregator(tf.keras.layers.Layer):
     item and user aggregator: for aggregating embeddings of neighbors (item/user aggreagator).
     """
 
-    def __init__(self, v2e, r2e, u2e, embed_dim, cuda="cpu", uv=True):
+    def __init__(self, v2e, r2e, u2e, embed_dim, cuda="/device:CPU:0", uv=True):
         super(UV_Aggregator, self).__init__()
         self.uv = uv
         self.v2e = v2e
@@ -22,12 +22,12 @@ class UV_Aggregator(tf.keras.layers.Layer):
         self.device = cuda
         self.embed_dim = embed_dim
         # self.w_r1 = nn.Linear(self.embed_dim * 2, self.embed_dim)
-        self.w_r1 = tf.Dense(self.embed_dim, input_size=self.embed_dim * 2)
+        self.w_r1 = tf.keras.layers.Dense(self.embed_dim)
         # self.w_r2 = nn.Linear(self.embed_dim, self.embed_dim)
-        self.w_r2 = tf.Dense(self.embed_dim, input_size=self.embed_dim)
+        self.w_r2 = tf.keras.layers.Dense(self.embed_dim)
         self.att = Attention(self.embed_dim)
 
-    def call(self, nodes, history_uv, history_r):
+    def call(self, nodes, history_uv, history_r, training):
         
         # embed_matrix = torch.empty(len(history_uv), self.embed_dim, dtype=torch.float).to(self.device)
         # arguments to torch.empty: 
@@ -36,7 +36,7 @@ class UV_Aggregator(tf.keras.layers.Layer):
         # dtype (torch.dtype, optional) – the desired data type of returned tensor. Default: if None, uses a global default (see torch.set_default_tensor_type()).
 
         #alternatively, use with tf.device("/gpu=0"): above this line to set the device
-        embed_matrix = tf.Tensor(tf.zeros(len(history_uv), self.embed_dim, dtype=tf.float32), device="cuda")
+        embed_matrix = np.zeros((len(history_uv), self.embed_dim))
 
         for i in range(len(history_uv)):
             history = history_uv[i]
@@ -45,14 +45,14 @@ class UV_Aggregator(tf.keras.layers.Layer):
 
             if self.uv == True:
                 # user component
-                e_uv = self.v2e.weight[history]
-                uv_rep = self.u2e.weight[nodes[i]]
+                e_uv = self.v2e(tf.convert_to_tensor(history))
+                uv_rep = self.u2e(nodes[i])
             else:
                 # item component
-                e_uv = self.u2e.weight[history]
-                uv_rep = self.v2e.weight[nodes[i]]
+                e_uv = self.u2e(tf.convert_to_tensor(history))
+                uv_rep = self.v2e(nodes[i])
 
-            e_r = self.r2e.weight[tmp_label]
+            e_r = self.r2e(tf.convert_to_tensor(tmp_label))
             # x = torch.cat((e_uv, e_r), 1)
             x = tf.concat((e_uv, e_r), 1)
             # x = F.relu(self.w_r1(x))
@@ -60,10 +60,10 @@ class UV_Aggregator(tf.keras.layers.Layer):
             # o_history = F.relu(self.w_r2(x))
             o_history = tf.nn.relu(self.w_r2(x))
 
-            att_w = self.att(o_history, uv_rep, num_histroy_item)
+            att_w = self.att(o_history, uv_rep, num_histroy_item, training)
             # att_history = torch.mm(o_history.t(), att_w)
-            att_history = tf.matmul(o_history.t(), att_w)
-            att_history = att_history.t()
+            att_history = tf.matmul(tf.transpose(o_history), att_w)
+            att_history = tf.transpose(att_history)
 
             embed_matrix[i] = att_history
         to_feats = embed_matrix

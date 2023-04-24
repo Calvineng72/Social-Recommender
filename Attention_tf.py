@@ -1,24 +1,27 @@
 import tensorflow as tf
-from tensorflow.keras import layers
+from Bilinear_tf import Bilinear
+# from tensorflow.keras import layers
 
 
-class Attention(layers.Layer):
+class Attention(tf.keras.layers.Layer):
     def __init__(self, embedding_dims):
         super(Attention, self).__init__()
         self.embed_dim = embedding_dims
-        self.bilinear = layers.Bilinear(self.embed_dim, self.embed_dim, 1)
-        self.att1 = layers.Dense(self.embed_dim)
-        self.att2 = layers.Dense(self.embed_dim)
-        self.att3 = layers.Dense(1)
-        self.softmax = layers.Softmax(axis=0)
+        self.bilinear = Bilinear(self.embed_dim, 1)
+        self.att1 = tf.keras.layers.Dense(self.embed_dim)
+        self.att2 = tf.keras.layers.Dense(self.embed_dim)
+        self.att3 = tf.keras.layers.Dense(1)
+        self.softmax = tf.keras.layers.Softmax(axis=0)
 
-    def call(self, node1, u_rep, num_neighs, training=None):
-        uv_reps = tf.repeat(u_rep, num_neighs, axis=0)
-        x = tf.concat([node1, uv_reps], axis=1)
+#TODO: whenever Attention gets called, might need to adjust boolean training
+    def call(self, node1, u_rep, num_neighs, att_training):
+        uv_reps = tf.repeat(u_rep, num_neighs)
+        x = tf.concat([node1, tf.reshape(uv_reps, tf.shape(node1))], axis=1)
+        # x = self.bilinear.call((node1, tf.reshape(uv_reps, tf.shape(node1))))
         x = tf.nn.relu(self.att1(x))
-        x = layers.Dropout(0.5)(x, training=training)
+        x = tf.keras.layers.Dropout(0.5)(x, training=att_training)
         x = tf.nn.relu(self.att2(x))
-        x = layers.Dropout(0.5)(x, training=training)
+        x = tf.keras.layers.Dropout(0.5)(x, training=att_training)
         x = self.att3(x)
         att = tf.nn.softmax(x, axis=0)
         return att

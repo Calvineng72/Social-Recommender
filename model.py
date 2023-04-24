@@ -1,7 +1,3 @@
-# import torch
-# import torch.nn as nn
-# from torch.nn import init
-# from torch.autograd import Variable
 import pickle
 import numpy as np
 import time
@@ -11,8 +7,6 @@ from UV_Encoders_tf import UV_Encoder
 from UV_Aggregators_tf import UV_Aggregator
 from Social_Encoders_tf import Social_Encoder
 from Social_Aggregators_tf import Social_Aggregator
-# import torch.nn.functional as F
-# import torch.utils.data
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import mean_absolute_error
 from math import sqrt
@@ -48,127 +42,87 @@ class GraphRec(tf.keras.Model):
         self.enc_v_history = enc_v_history
         self.embed_dim = enc_u.embed_dim
 
-        # self.w_ur1 = nn.Linear(self.embed_dim, self.embed_dim)
         self.w_ur1 = tf.keras.layers.Dense(self.embed_dim)
-        # self.w_ur2 = nn.Linear(self.embed_dim, self.embed_dim)
         self.w_ur2 = tf.keras.layers.Dense(self.embed_dim)
-        # self.w_vr1 = nn.Linear(self.embed_dim, self.embed_dim)
         self.w_vr1 = tf.keras.layers.Dense(self.embed_dim)
-        # self.w_vr2 = nn.Linear(self.embed_dim, self.embed_dim)
         self.w_vr2 = tf.keras.layers.Dense(self.embed_dim)
-        # self.w_uv1 = nn.Linear(self.embed_dim * 2, self.embed_dim)
         self.w_uv1 = tf.keras.layers.Dense(self.embed_dim)
-        # self.w_uv2 = nn.Linear(self.embed_dim, 16)
         self.w_uv2 = tf.keras.layers.Dense(16)
-        # self.w_uv3 = nn.Linear(16, 1)
         self.w_uv3 = tf.keras.layers.Dense(1)
         self.r2e = r2e
-        # torch.nn.BatchNorm1d(num_features, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True, device=None, dtype=None)
-        # self.bn1 = nn.BatchNorm1d(self.embed_dim, momentum=0.5)
         self.bn1 = tf.keras.layers.BatchNormalization(momentum=0.5)
-        # self.bn2 = nn.BatchNorm1d(self.embed_dim, momentum=0.5)
         self.bn2 = tf.keras.layers.BatchNormalization(momentum=0.5)
-        # self.bn3 = nn.BatchNorm1d(self.embed_dim, momentum=0.5)
         self.bn3 = tf.keras.layers.BatchNormalization(momentum=0.5)
-        # self.bn4 = nn.BatchNorm1d(16, momentum=0.5)
         self.bn4 = tf.keras.layers.BatchNormalization(momentum=0.5)
-        # self.criterion = nn.MSELoss()
         self.criterion = tf.keras.losses.MeanSquaredError()
+
+    # def compile(self, optimizer, loss, metrics):
+    #     self.optimizer = optimizer
+    #     # self.compiled_loss = loss 
+        # self.accuracy_function = metrics[0]
 
     def call(self, nodes_u, nodes_v, call_training):
         embeds_u = self.enc_u.call(nodes_u, call_training)
         embeds_v = self.enc_v_history.call(nodes_v, call_training)
 
-        # x_u = F.relu(self.bn1(self.w_ur1(embeds_u)))
         x_u = tf.nn.relu(self.bn1(self.w_ur1(embeds_u)))
-        # x_u = F.dropout(x_u, training=self.training)
         x_u = tf.keras.layers.Dropout(rate=0.5)(x_u, training=call_training)
         x_u = self.w_ur2(x_u)
-        # x_v = F.relu(self.bn2(self.w_vr1(embeds_v)))
         x_v = tf.nn.relu(self.bn2(self.w_vr1(embeds_v)))
-        # x_v = F.dropout(x_v, training=self.training)
         x_v = tf.keras.layers.Dropout(rate=0.5)(x_v, training=call_training)
         x_v = self.w_vr2(x_v)
 
-        # x_uv = torch.cat((x_u, x_v), 1)
         x_uv = tf.concat((x_u, x_v), 1)
-        # x = F.relu(self.bn3(self.w_uv1(x_uv)))
         x = tf.nn.relu(self.bn3(self.w_uv1(x_uv)))
-        # x = F.dropout(x, training=self.training)
         x = tf.keras.layers.Dropout(rate=0.5)(x, training=call_training)
-        # x = F.relu(self.bn4(self.w_uv2(x)))
         x = tf.nn.relu(self.bn4(self.w_uv2(x)))
-        # x = F.dropout(x, training=self.training)
         x = tf.keras.layers.Dropout(rate=0.5)(x, training=call_training)
         scores = self.w_uv3(x)
         return tf.squeeze(scores)
 
-    # def loss(self, nodes_u, nodes_v, labels_list, training):
-    #     scores = self.call(nodes_u, nodes_v, training)
-    #     return self.criterion(scores, labels_list)
-    def loss(self, scores, labels_list):
-        return self.criterion(scores, labels_list)
 
 
-def train(model, device, train_loader, optimizer, epoch, best_rmse, best_mae, training=True):
-    # model.train()
-    running_loss = 0.0
-    for i, data in enumerate(train_loader, 0):
-        batch_nodes_u, batch_nodes_v, labels_list = data
-        with tf.GradientTape() as tape:
-            # deleted the to device stufff
-            scores = model.call(batch_nodes_u, batch_nodes_v, training)
-            loss = model.loss(scores, labels_list)
-        gradients = tape.gradient(loss, model.trainable_variables)
-        optimizer.apply_gradients(zip(gradients, model.trainable_variables))
-        running_loss += loss
-        if i % 100 == 0:
-            print('[%d, %5d] loss: %.3f, The best rmse/mae: %.6f / %.6f' % (
-                epoch, i, running_loss / 100, best_rmse, best_mae))
-            running_loss = 0.0
-
-        # optimizer.zero_grad()
-        # # loss = model.loss(batch_nodes_u.to(device), batch_nodes_v.to(device), labels_list.to(device))
-        # loss.backward(retain_graph=True)
-        # optimizer.step()
-        # running_loss += loss.item()
-        # if i % 100 == 0:
-        #     print('[%d, %5d] loss: %.3f, The best rmse/mae: %.6f / %.6f' % (
-        #         epoch, i, running_loss / 100, best_rmse, best_mae))
-        #     running_loss = 0.0
-    return 0
+    def train_step(self, device, train_loader, optimizer, epoch, best_rmse, best_mae, training=True):
+        running_loss = 0.0
+        for i, data in enumerate(train_loader, 0):
+            batch_nodes_u, batch_nodes_v, labels_list = data
+            with tf.GradientTape() as tape:
+                scores = self.call(batch_nodes_u, batch_nodes_v, training)
+                # loss = self.loss_func(scores, labels_list)
+                loss = self.compiled_loss(scores, labels_list)
+            gradients = tape.gradient(loss, self.trainable_variables)
+            optimizer.apply_gradients(zip(gradients, self.trainable_variables))
+            running_loss += loss
+            if i % 100 == 0:
+                print('[%d, %5d] loss: %.3f, The best rmse/mae: %.6f / %.6f' % (
+                    epoch, i, running_loss / 100, best_rmse, best_mae))
+                running_loss = 0.0
+        # Update metrics (includes the metric that tracks the loss)
+            self.compiled_metrics.update_state(labels_list, scores)
+            # Return a dict mapping metric names to current value
+            return {m.name: m.result() for m in self.metrics}
 
 
-def test(model, device, test_loader, training=False):
-    # model.eval()
-    tmp_pred = []
-    target = []
-    # with torch.no_grad():
-    #     for test_u, test_v, tmp_target in test_loader:
-    #         test_u, test_v, tmp_target = test_u.to(device), test_v.to(device), tmp_target.to(device)
-    #         val_output = model.forward(test_u, test_v)
-    #         tmp_pred.append(list(val_output.data.cpu().numpy()))
-    #         target.append(list(tmp_target.data.cpu().numpy()))
-    # tmp_pred = np.array(sum(tmp_pred, []))
-    # target = np.array(sum(target, []))
-    # expected_rmse = sqrt(mean_squared_error(tmp_pred, target))
-    # mae = mean_absolute_error(tmp_pred, target)
-    # return expected_rmse, mae
+    def test_step(self, device, test_loader, training=False):
+        tmp_pred = []
+        target = []
+        for test_u, test_v, tmp_target in test_loader:
+            val_output = self.call(test_u, test_v, training)
+            tmp_pred.append(list(val_output))
+            target.append(list(tmp_target))
+        tmp_pred = np.array(sum(tmp_pred, []))
+        target = np.array(sum(target, []))
+        expected_rmse = sqrt(mean_squared_error(tmp_pred, target))
+        mae = mean_absolute_error(tmp_pred, target)
+        return expected_rmse, mae
+    
+def loss_func(self, nodes_u, nodes_v, labels_list, training):
+    scores = self.call(nodes_u, nodes_v, training)
+    return self.criterion(scores, labels_list)
 
-
-
-
-    #TODO: maybe pass a boolean is_training to call
-    for test_u, test_v, tmp_target in test_loader:
-        val_output = model.call(test_u, test_v, training)
-        tmp_pred.append(list(val_output))
-        target.append(list(tmp_target))
-    tmp_pred = np.array(sum(tmp_pred, []))
-    target = np.array(sum(target, []))
-    expected_rmse = sqrt(mean_squared_error(tmp_pred, target))
-    mae = mean_absolute_error(tmp_pred, target)
-    return expected_rmse, mae
-
+def my_loss_func(scores, labels_list):
+    # scores = self.call(nodes_u, nodes_v, training)
+    return tf.keras.losses.MeanSquaredError(scores, labels_list)
 
 #TODO: changed default epochs from 100
 
@@ -211,28 +165,17 @@ def main():
     ratings_list: rating value from 0.5 to 4.0 (8 opinion embeddings)
     """
 
-    # trainset = torch.utils.data.TensorDataset(torch.LongTensor(train_u), torch.LongTensor(train_v),
-    #                                           torch.FloatTensor(train_r))
-    # print(tf.convert_to_tensor(train_r).dtype)
     trainset = tf.data.Dataset.from_tensor_slices([tf.convert_to_tensor(train_u, dtype=tf.float32), tf.convert_to_tensor(train_v, dtype=tf.float32), tf.convert_to_tensor(train_r, dtype=tf.float32)])
-    # testset = torch.utils.data.TensorDataset(torch.LongTensor(test_u), torch.LongTensor(test_v),
-    #                                          torch.FloatTensor(test_r))
     testset = tf.data.Dataset.from_tensor_slices([tf.convert_to_tensor(test_u, dtype=tf.float32), tf.convert_to_tensor(test_v, dtype=tf.float32), tf.convert_to_tensor(test_r, dtype=tf.float32)])
 
-    # train_loader = torch.utils.data.DataLoader(trainset, batch_size=args.batch_size, shuffle=True)
-    train_loader = trainset.batch(args.batch_size)
-    # test_loader = torch.utils.data.DataLoader(testset, batch_size=args.test_batch_size, shuffle=True)
-    test_loader = testset.batch(args.test_batch_size)
+    train_loader = trainset.batch(args.batch_size, deterministic=False)
+    test_loader = testset.batch(args.test_batch_size, deterministic=False)
     num_users = history_u_lists.__len__()
     num_items = history_v_lists.__len__()
     num_ratings = ratings_list.__len__()
 
-    # torch.nn.Embedding(num_embeddings, embedding_dim, padding_idx=None, max_norm=None, norm_type=2.0, scale_grad_by_freq=False, sparse=False, _weight=None, _freeze=False, device=None, dtype=None)
-    # u2e = nn.Embedding(num_users, embed_dim).to(device)
     u2e = tf.keras.layers.Embedding(num_users, embed_dim)
-    # v2e = nn.Embedding(num_items, embed_dim).to(device)
     v2e = tf.keras.layers.Embedding(num_items, embed_dim)
-    # r2e = nn.Embedding(num_ratings, embed_dim).to(device)
     r2e = tf.keras.layers.Embedding(num_ratings, embed_dim)
 
     # user feature
@@ -249,36 +192,44 @@ def main():
     enc_v_history = UV_Encoder(v2e, embed_dim, history_v_lists, history_vr_lists, agg_v_history, cuda=device, uv=False)
 
     # model
-    # graphrec = GraphRec(enc_u, enc_v_history, r2e).to(device)
     graphrec = GraphRec(enc_u, enc_v_history, r2e)
-    # optimizer = torch.optim.RMSprop(graphrec.parameters(), lr=args.lr, alpha=0.9)
     optimizer = tf.keras.optimizers.experimental.RMSprop(learning_rate=args.lr, epsilon=0.9)
 
     best_rmse = 9999.0
     best_mae = 9999.0
     endure_count = 0
-    # graphrec.build(tf.shape(train_loader))
-    # print(graphrec.summary())
 
-    for epoch in range(1, args.epochs + 1):
+    graphrec.compile(
+        optimizer=optimizer, 
+        loss=my_loss_func,
+        metrics=tf.keras.metrics.MeanSquaredError
+    )
 
-        train(graphrec, device, train_loader, optimizer, epoch, best_rmse, best_mae, training=True)
+    graphrec.fit(
+        train_loader,
+        epochs = args.epochs,
+        batch_size = args.batch_size,
+        validation_data={test_loader}
+    )
 
-        #TODO: move testing outside???
-        expected_rmse, mae = test(graphrec, device, test_loader, training=False)
-        # please add the validation set to tune the hyper-parameters based on your datasets.
+    # for epoch in range(1, args.epochs + 1):
 
-        # early stopping (no validation set in toy dataset)
-        if best_rmse > expected_rmse:
-            best_rmse = expected_rmse
-            best_mae = mae
-            endure_count = 0
-        else:
-            endure_count += 1
-        print("rmse: %.4f, mae:%.4f " % (expected_rmse, mae))
+    #     train(graphrec, device, train_loader, optimizer, epoch, best_rmse, best_mae, training=True)
+    #     expected_rmse, mae = test(graphrec, device, test_loader, training=False)
+    #     # please add the validation set to tune the hyper-parameters based on your datasets.
 
-        if endure_count > 5:
-            break
+    #     # early stopping (no validation set in toy dataset)
+    #     if best_rmse > expected_rmse:
+    #         best_rmse = expected_rmse
+    #         best_mae = mae
+    #         endure_count = 0
+    #     else:
+    #         endure_count += 1
+    #     print("TESTING SET!!!!")
+    #     print("rmse: %.4f, mae:%.4f " % (expected_rmse, mae))
+
+    #     if endure_count > 5:
+    #         break
 
 
 if __name__ == "__main__":
