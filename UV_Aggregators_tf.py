@@ -60,7 +60,7 @@ class UV_Aggregator(tf.keras.layers.Layer):
             # o_history = F.relu(self.w_r2(x))
             o_history = tf.nn.relu(self.w_r2(x))
 
-            att_w = self.att(o_history, uv_rep, num_histroy_item, training)
+            att_w = self.att.call(o_history, uv_rep, num_histroy_item, training)
             # att_history = torch.mm(o_history.t(), att_w)
             att_history = tf.matmul(tf.transpose(o_history), att_w)
             att_history = tf.transpose(att_history)

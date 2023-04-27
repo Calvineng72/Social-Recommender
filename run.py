@@ -63,8 +63,8 @@ class GraphRec(tf.keras.Model):
         self.agg_u_history = UV_Aggregator(self.v2e, self.r2e, self.u2e, embed_dim, cuda=device, uv=True)
         self.enc_u_history = UV_Encoder(self.u2e, embed_dim, history_u_lists, history_ur_lists, self.agg_u_history, cuda=device, uv=True)
         # neighobrs
-        self.agg_u_social = Social_Aggregator(lambda nodes: tf.transpose(self.enc_u_history.call(nodes)), self.u2e, embed_dim, cuda=device)
-        self.enc_u = Social_Encoder(lambda nodes: tf.transpose(self.enc_u_history.call(nodes)), embed_dim, social_adj_lists, self.agg_u_social,
+        self.agg_u_social = Social_Aggregator(lambda nodes: tf.transpose(self.enc_u_history.call(nodes, True)), self.u2e, embed_dim, cuda=device)
+        self.enc_u = Social_Encoder(lambda nodes: tf.transpose(self.enc_u_history.call(nodes, True)), embed_dim, social_adj_lists, self.agg_u_social,
                             base_model=self.enc_u_history, cuda=device)
 
         # item feature: user * rating

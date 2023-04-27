@@ -42,7 +42,7 @@ class Social_Aggregator(tf.keras.layers.Layer): #TODO: or is it layers.Layer
             #e_u = torch.t(feature_neigbhors)
             u_rep = self.u2e(np.array(nodes[i]))
 
-            att_w = self.att(e_u, u_rep, num_neighs, training)
+            att_w = self.att.call(e_u, u_rep, num_neighs, training)
             att_history = tf.transpose(tf.matmul(tf.transpose(e_u), att_w))
             embed_matrix[i] = att_history
         to_feats = embed_matrix
