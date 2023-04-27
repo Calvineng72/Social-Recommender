@@ -34,6 +34,7 @@ class UV_Encoder(tf.keras.layers.Layer):
         # combined = torch.cat([self_feats, neigh_feats], dim=1)
         combined = tf.concat([self_feats, neigh_feats], axis=1)
         # combined = F.relu(self.linear1(combined))
+        combined = tf.Variable(combined)
         combined = tf.nn.relu(self.linear1(combined))
 
         return combined

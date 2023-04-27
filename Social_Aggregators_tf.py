@@ -29,10 +29,13 @@ class Social_Aggregator(tf.keras.layers.Layer): #TODO: or is it layers.Layer
         # embed_matrix = tf.Tensor(tf.zeros(len(nodes), self.embed_dim, dtype=tf.float32), device="/device:CPU:0")
         embed_matrix = np.zeros((len(nodes), self.embed_dim))
         for i in range(len(nodes)):
+            # print(nodes[i])
             tmp_adj = to_neighs[i]
             num_neighs = len(tmp_adj)
             # 
             # print(type(nodes[i]))
+            # print(tmp_adj)
+            # print(len(tmp_adj))
             e_u = self.u2e(np.array(list(tmp_adj)).astype('float32')) # fast: user embedding 
             #slow: item-space user latent factor (item aggregation)
             #feature_neigbhors = self.features(torch.LongTensor(list(tmp_adj)).to(self.device))
@@ -43,5 +46,6 @@ class Social_Aggregator(tf.keras.layers.Layer): #TODO: or is it layers.Layer
             att_history = tf.transpose(tf.matmul(tf.transpose(e_u), att_w))
             embed_matrix[i] = att_history
         to_feats = embed_matrix
+        to_feats = tf.Variable(tf.convert_to_tensor(embed_matrix, dtype=tf.float32), dtype=tf.float32)
 
         return to_feats

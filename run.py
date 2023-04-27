@@ -42,11 +42,38 @@ If you use this code, please cite our paper:
 
 class GraphRec(tf.keras.Model):
 
-    def __init__(self, enc_u, enc_v_history, r2e):
+    def __init__(self, num_users, embed_dim, num_items, num_ratings, device, 
+                 history_u_lists, history_ur_lists, history_v_lists, 
+                 history_vr_lists, social_adj_lists):
         super(GraphRec, self).__init__()
-        self.enc_u = enc_u
-        self.enc_v_history = enc_v_history
-        self.embed_dim = enc_u.embed_dim
+        # self.num_users = num_users
+        # self.embed_dim 
+
+
+        # torch.nn.Embedding(num_embeddings, embedding_dim, padding_idx=None, max_norm=None, norm_type=2.0, scale_grad_by_freq=False, sparse=False, _weight=None, _freeze=False, device=None, dtype=None)
+        # u2e = nn.Embedding(num_users, embed_dim).to(device)
+        self.u2e = tf.keras.layers.Embedding(num_users, embed_dim)
+        # v2e = nn.Embedding(num_items, embed_dim).to(device)
+        self.v2e = tf.keras.layers.Embedding(num_items, embed_dim)
+        # r2e = nn.Embedding(num_ratings, embed_dim).to(device)
+        self.r2e = tf.keras.layers.Embedding(num_ratings, embed_dim)
+
+        # user feature
+        # features: item * rating
+        self.agg_u_history = UV_Aggregator(self.v2e, self.r2e, self.u2e, embed_dim, cuda=device, uv=True)
+        self.enc_u_history = UV_Encoder(self.u2e, embed_dim, history_u_lists, history_ur_lists, self.agg_u_history, cuda=device, uv=True)
+        # neighobrs
+        self.agg_u_social = Social_Aggregator(lambda nodes: tf.transpose(self.enc_u_history(nodes)), self.u2e, embed_dim, cuda=device)
+        self.enc_u = Social_Encoder(lambda nodes: tf.transpose(self.enc_u_history(nodes)), embed_dim, social_adj_lists, self.agg_u_social,
+                            base_model=self.enc_u_history, cuda=device)
+
+        # item feature: user * rating
+        self.agg_v_history = UV_Aggregator(self.v2e, self.r2e, self.u2e, embed_dim, cuda=device, uv=False)
+        self.enc_v_history = UV_Encoder(self.v2e, embed_dim, history_v_lists, history_vr_lists, self.agg_v_history, cuda=device, uv=False)
+
+        # self.enc_u = enc_u
+        # self.enc_v_history = enc_v_history
+        self.embed_dim = self.enc_u.embed_dim
 
         # self.w_ur1 = nn.Linear(self.embed_dim, self.embed_dim)
         self.w_ur1 = tf.keras.layers.Dense(self.embed_dim)
@@ -62,7 +89,7 @@ class GraphRec(tf.keras.Model):
         self.w_uv2 = tf.keras.layers.Dense(16)
         # self.w_uv3 = nn.Linear(16, 1)
         self.w_uv3 = tf.keras.layers.Dense(1)
-        self.r2e = r2e
+        # self.r2e = r2e
         # torch.nn.BatchNorm1d(num_features, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True, device=None, dtype=None)
         # self.bn1 = nn.BatchNorm1d(self.embed_dim, momentum=0.5)
         self.bn1 = tf.keras.layers.BatchNormalization(momentum=0.5)
@@ -231,30 +258,33 @@ def main():
     num_ratings = ratings_list.__len__()
     # print(num_users)
 
-    # torch.nn.Embedding(num_embeddings, embedding_dim, padding_idx=None, max_norm=None, norm_type=2.0, scale_grad_by_freq=False, sparse=False, _weight=None, _freeze=False, device=None, dtype=None)
-    # u2e = nn.Embedding(num_users, embed_dim).to(device)
-    u2e = tf.keras.layers.Embedding(num_users, embed_dim)
-    # v2e = nn.Embedding(num_items, embed_dim).to(device)
-    v2e = tf.keras.layers.Embedding(num_items, embed_dim)
-    # r2e = nn.Embedding(num_ratings, embed_dim).to(device)
-    r2e = tf.keras.layers.Embedding(num_ratings, embed_dim)
+#TODO: 
+    # # torch.nn.Embedding(num_embeddings, embedding_dim, padding_idx=None, max_norm=None, norm_type=2.0, scale_grad_by_freq=False, sparse=False, _weight=None, _freeze=False, device=None, dtype=None)
+    # # u2e = nn.Embedding(num_users, embed_dim).to(device)
+    # u2e = tf.keras.layers.Embedding(num_users, embed_dim)
+    # # v2e = nn.Embedding(num_items, embed_dim).to(device)
+    # v2e = tf.keras.layers.Embedding(num_items, embed_dim)
+    # # r2e = nn.Embedding(num_ratings, embed_dim).to(device)
+    # r2e = tf.keras.layers.Embedding(num_ratings, embed_dim)
 
-    # user feature
-    # features: item * rating
-    agg_u_history = UV_Aggregator(v2e, r2e, u2e, embed_dim, cuda=device, uv=True)
-    enc_u_history = UV_Encoder(u2e, embed_dim, history_u_lists, history_ur_lists, agg_u_history, cuda=device, uv=True)
-    # neighobrs
-    agg_u_social = Social_Aggregator(lambda nodes: tf.transpose(enc_u_history(nodes)), u2e, embed_dim, cuda=device)
-    enc_u = Social_Encoder(lambda nodes: tf.transpose(enc_u_history(nodes)), embed_dim, social_adj_lists, agg_u_social,
-                           base_model=enc_u_history, cuda=device)
+    # # user feature
+    # # features: item * rating
+    # agg_u_history = UV_Aggregator(v2e, r2e, u2e, embed_dim, cuda=device, uv=True)
+    # enc_u_history = UV_Encoder(u2e, embed_dim, history_u_lists, history_ur_lists, agg_u_history, cuda=device, uv=True)
+    # # neighobrs
+    # agg_u_social = Social_Aggregator(lambda nodes: tf.transpose(enc_u_history(nodes)), u2e, embed_dim, cuda=device)
+    # enc_u = Social_Encoder(lambda nodes: tf.transpose(enc_u_history(nodes)), embed_dim, social_adj_lists, agg_u_social,
+    #                        base_model=enc_u_history, cuda=device)
 
-    # item feature: user * rating
-    agg_v_history = UV_Aggregator(v2e, r2e, u2e, embed_dim, cuda=device, uv=False)
-    enc_v_history = UV_Encoder(v2e, embed_dim, history_v_lists, history_vr_lists, agg_v_history, cuda=device, uv=False)
+    # # item feature: user * rating
+    # agg_v_history = UV_Aggregator(v2e, r2e, u2e, embed_dim, cuda=device, uv=False)
+    # enc_v_history = UV_Encoder(v2e, embed_dim, history_v_lists, history_vr_lists, agg_v_history, cuda=device, uv=False)
 
     # model
     # graphrec = GraphRec(enc_u, enc_v_history, r2e).to(device)
-    graphrec = GraphRec(enc_u, enc_v_history, r2e)
+    graphrec = GraphRec(num_users, embed_dim, num_items, num_ratings, device, history_u_lists, 
+                        history_ur_lists, history_v_lists, history_vr_lists, 
+                        social_adj_lists)
     # optimizer = torch.optim.RMSprop(graphrec.parameters(), lr=args.lr, alpha=0.9)
     optimizer = tf.keras.optimizers.experimental.RMSprop(learning_rate=args.lr, epsilon=0.9)
 
