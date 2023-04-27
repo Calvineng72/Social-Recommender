@@ -190,7 +190,7 @@ def main():
     # use_cuda = False
     # if tf.test.is_gpu_available():
     #     use_cuda = True
-    use_cuda = False
+    use_cuda = True
     device = tf.device("/GPU:0" if use_cuda else "/device:CPU:0")
 
     embed_dim = args.embed_dim
@@ -256,7 +256,7 @@ def main():
     # graphrec = GraphRec(enc_u, enc_v_history, r2e).to(device)
     graphrec = GraphRec(enc_u, enc_v_history, r2e)
     # optimizer = torch.optim.RMSprop(graphrec.parameters(), lr=args.lr, alpha=0.9)
-    optimizer = tf.keras.optimizers.experimental.RMSprop(learning_rate=args.lr, epsilon=0.9)
+    optimizer = tf.keras.optimizers.RMSprop(learning_rate=args.lr, epsilon=0.9)
 
     best_rmse = 9999.0
     best_mae = 9999.0

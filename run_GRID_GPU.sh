@@ -9,7 +9,10 @@
 #$ -l gpus=1
 
 # This loads the virtual environment
-source /course/cs1470/cs1470_env/bin/activate
+# source /course/cs1470/cs1470_env/bin/activate
+
+cd /home/ewang96/DLFinal
+source /home/ewang96/miniconda3/bin/activate tf_gpu1
 FILE=$1
 # Print out the python file so we have a record. 
 # Useful when iterating a file so you can keep track of what 
@@ -27,6 +30,11 @@ export CUDA_CACHE_PATH=/ltmp/
 # Runs the python file passing all args and pipes n into the file. 
 # -u tells python to not buffer the output to so it is printed
 # more often.
+
+export LD_LIBRARY_PATH="/home/ewang96/miniconda3/lib:${LD_LIBRARY_PATH}"
+export TF_ENABLE_ONEDNN_OPTS=1
+export XLA_FLAGS=--xla_gpu_cuda_data_dir=/usr/lib/cuda
+export TF_XLA_FLAGS=--tf_xla_enable_xla_devices
 echo -e "n\n" | python -u $FILE $@
 
 #Reminder

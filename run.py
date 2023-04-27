@@ -63,8 +63,8 @@ class GraphRec(tf.keras.Model):
         self.agg_u_history = UV_Aggregator(self.v2e, self.r2e, self.u2e, embed_dim, cuda=device, uv=True)
         self.enc_u_history = UV_Encoder(self.u2e, embed_dim, history_u_lists, history_ur_lists, self.agg_u_history, cuda=device, uv=True)
         # neighobrs
-        self.agg_u_social = Social_Aggregator(lambda nodes: tf.transpose(self.enc_u_history(nodes)), self.u2e, embed_dim, cuda=device)
-        self.enc_u = Social_Encoder(lambda nodes: tf.transpose(self.enc_u_history(nodes)), embed_dim, social_adj_lists, self.agg_u_social,
+        self.agg_u_social = Social_Aggregator(lambda nodes: tf.transpose(self.enc_u_history.call(nodes)), self.u2e, embed_dim, cuda=device)
+        self.enc_u = Social_Encoder(lambda nodes: tf.transpose(self.enc_u_history.call(nodes)), embed_dim, social_adj_lists, self.agg_u_social,
                             base_model=self.enc_u_history, cuda=device)
 
         # item feature: user * rating
@@ -203,10 +203,11 @@ def test(model, device, test_loader, training=False):
 #TODO: changed default epochs from 100
 
 def main():
-    # Training settings
+    # Training settings #TODO og batch size was 128, making it 32
+    # embed dim was 64 making it 32
     parser = argparse.ArgumentParser(description='Social Recommendation: GraphRec model')
-    parser.add_argument('--batch_size', type=int, default=128, metavar='N', help='input batch size for training')
-    parser.add_argument('--embed_dim', type=int, default=64, metavar='N', help='embedding size')
+    parser.add_argument('--batch_size', type=int, default=32, metavar='N', help='input batch size for training')
+    parser.add_argument('--embed_dim', type=int, default=32, metavar='N', help='embedding size')
     parser.add_argument('--lr', type=float, default=0.001, metavar='LR', help='learning rate')
     parser.add_argument('--test_batch_size', type=int, default=1000, metavar='N', help='input batch size for testing')
     parser.add_argument('--epochs', type=int, default=5, metavar='N', help='number of epochs to train')
@@ -217,7 +218,7 @@ def main():
     # use_cuda = False
     # if tf.test.is_gpu_available():
     #     use_cuda = True
-    use_cuda = False
+    use_cuda = True
     device = tf.device("/GPU:0" if use_cuda else "/device:CPU:0")
 
     embed_dim = args.embed_dim
@@ -286,7 +287,7 @@ def main():
                         history_ur_lists, history_v_lists, history_vr_lists, 
                         social_adj_lists)
     # optimizer = torch.optim.RMSprop(graphrec.parameters(), lr=args.lr, alpha=0.9)
-    optimizer = tf.keras.optimizers.experimental.RMSprop(learning_rate=args.lr, epsilon=0.9)
+    optimizer = tf.keras.optimizers.RMSprop(learning_rate=args.lr, epsilon=0.9)
 
     best_rmse = 9999.0
     best_mae = 9999.0

@@ -53,7 +53,7 @@ class Bilinear(tf.keras.layers.Layer):
         trainable=True)
     super().build(input_shape)
 
-  def call(self, inputs: tuple[tf.Tensor]) -> tf.Tensor:
+  def call(self, inputs):
     """Computes bilinear interaction between two vector tensors.
     Args:
       inputs: A pair of tensors of the same shape [batch_size, embedding_dim].
