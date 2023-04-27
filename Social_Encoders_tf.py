@@ -35,7 +35,7 @@ class Social_Encoder(tf.keras.layers.Layer): #layers.Layer?
         
         # self-connection could be considered.
         combined = tf.concat([self_feats, neigh_feats], axis=1)
-        combined = tf.Variable(combined)
+        # combined = tf.Variable(combined)
         combined = tf.nn.relu(self.linear1(combined))
 
         return combined

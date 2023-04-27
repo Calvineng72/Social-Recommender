@@ -66,6 +66,6 @@ class UV_Aggregator(tf.keras.layers.Layer):
             att_history = tf.transpose(att_history)
 
             embed_matrix[i] = att_history
-        # to_feats = embed_matrix
-        to_feats = tf.Variable(tf.convert_to_tensor(embed_matrix, dtype=tf.float32), dtype=tf.float32)
+        to_feats = embed_matrix
+        # to_feats = tf.Variable(tf.convert_to_tensor(embed_matrix, dtype=tf.float32), dtype=tf.float32)
         return to_feats

@@ -157,6 +157,9 @@ def train(model, device, train_loader, optimizer, epoch, best_rmse, best_mae, tr
                 epoch, i, running_loss / 100, best_rmse, best_mae))
             running_loss = 0.0
 
+        for var, g in zip(model.trainable_variables, gradients):
+            print(f'{var.name}, shape: {g}') 
+
         # optimizer.zero_grad()
         # # loss = model.loss(batch_nodes_u.to(device), batch_nodes_v.to(device), labels_list.to(device))
         # loss.backward(retain_graph=True)
