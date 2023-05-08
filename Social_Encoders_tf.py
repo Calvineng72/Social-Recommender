@@ -20,22 +20,24 @@ class Social_Encoder(tf.keras.layers.Layer): #layers.Layer?
         self.device = cuda
         # self.linear1 = nn.Linear(2 * self.embed_dim, self.embed_dim)  #
         # NOTE: torch.nn.Linear(in_features, out_features, bias=True, device=None, dtype=None)
-        self.linear1 = tf.keras.layers.Dense(self.embed_dim)
+        self.linear1 = tf.keras.layers.Dense(self.embed_dim, name="SocEnc_D1")
 
     def call(self, nodes, training):
 
         to_neighs = []
-        for node in nodes:
-            to_neighs.append(self.social_adj_lists[int(node)])
-        neigh_feats = self.aggregator.call(nodes, to_neighs, training)  # user-user network
+        with tf.GradientTape() as tape:
+            for node in nodes:
+                to_neighs.append(self.social_adj_lists[int(node)])
+            neigh_feats = self.aggregator.call(nodes, to_neighs, training)  # user-user network
 
-        # self_feats = self.features(torch.LongTensor(nodes.cpu().numpy())).to(self.device)
-        self_feats = self.features(tf.convert_to_tensor(nodes))  #TODO: unsure about this
-        self_feats = tf.transpose(self_feats) #transpose
-        
-        # self-connection could be considered.
-        combined = tf.concat([self_feats, neigh_feats], axis=1)
-        # combined = tf.Variable(combined)
-        combined = tf.nn.relu(self.linear1(combined))
+            # self_feats = self.features(torch.LongTensor(nodes.cpu().numpy())).to(self.device)
+            self_feats = self.features(tf.convert_to_tensor(nodes))  #TODO: unsure about this
+            self_feats = tf.transpose(self_feats) #transpose
+            
+            # self-connection could be considered.
+            combined = tf.concat([self_feats, neigh_feats], axis=1)
+            # combined = tf.Variable(combined)
+            combined = tf.nn.relu(self.linear1(combined))
+            tape.watch(combined)
 
         return combined

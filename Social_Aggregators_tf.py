@@ -28,6 +28,8 @@ class Social_Aggregator(tf.keras.layers.Layer): #TODO: or is it layers.Layer
         #alternatively, use with tf.device("/gpu=0"): above this line to set the device
         # embed_matrix = tf.Tensor(tf.zeros(len(nodes), self.embed_dim, dtype=tf.float32), device="/device:CPU:0")
         embed_matrix = np.zeros((len(nodes), self.embed_dim))
+
+        listTensors = []
         for i in range(len(nodes)):
             # print(nodes[i])
             tmp_adj = to_neighs[i]
@@ -36,16 +38,19 @@ class Social_Aggregator(tf.keras.layers.Layer): #TODO: or is it layers.Layer
             # print(type(nodes[i]))
             # print(tmp_adj)
             # print(len(tmp_adj))
-            e_u = self.u2e(np.array(list(tmp_adj)).astype('float32')) # fast: user embedding 
-            #slow: item-space user latent factor (item aggregation)
-            #feature_neigbhors = self.features(torch.LongTensor(list(tmp_adj)).to(self.device))
-            #e_u = torch.t(feature_neigbhors)
-            u_rep = self.u2e(np.array(nodes[i]))
+            with tf.GradientTape() as tape:
+                e_u = self.u2e(np.array(list(tmp_adj)).astype('float32')) # fast: user embedding 
+                #slow: item-space user latent factor (item aggregation)
+                #feature_neigbhors = self.features(torch.LongTensor(list(tmp_adj)).to(self.device))
+                #e_u = torch.t(feature_neigbhors)
+                u_rep = self.u2e(np.array(nodes[i]))
 
-            att_w = self.att.call(e_u, u_rep, num_neighs, training)
-            att_history = tf.transpose(tf.matmul(tf.transpose(e_u), att_w))
-            embed_matrix[i] = att_history
+                att_w = self.att.call(e_u, u_rep, num_neighs, training)
+                att_history = tf.transpose(tf.matmul(tf.transpose(e_u), att_w))
+                embed_matrix[i] = att_history.numpy()
+            listTensors.append(att_history)
         to_feats = embed_matrix
+        to_feats = tf.stack(listTensors)
         # to_feats = tf.Variable(tf.convert_to_tensor(embed_matrix, dtype=tf.float32), dtype=tf.float32)
 
-        return to_feats
+        return tf.squeeze(to_feats)

@@ -18,23 +18,25 @@ class UV_Encoder(tf.keras.layers.Layer):
         self.embed_dim = embed_dim
         self.device = cuda
         # self.linear1 = nn.Linear(2 * self.embed_dim, self.embed_dim)  #
-        self.linear1 = tf.keras.layers.Dense(self.embed_dim)
+        self.linear1 = tf.keras.layers.Dense(self.embed_dim, name="UVEnc_D1")
 
     def call(self, nodes, training):
         tmp_history_uv = []
         tmp_history_r = []
-        for node in nodes:
-            tmp_history_uv.append(self.history_uv_lists[int(node)])
-            tmp_history_r.append(self.history_r_lists[int(node)])
+        with tf.GradientTape() as tape:
+            for node in nodes:
+                tmp_history_uv.append(self.history_uv_lists[int(node)])
+                tmp_history_r.append(self.history_r_lists[int(node)])
 
-        neigh_feats = self.aggregator.call(nodes, tmp_history_uv, tmp_history_r, training)  # user-item network
+            neigh_feats = self.aggregator.call(nodes, tmp_history_uv, tmp_history_r, training)  # user-item network
 
-        self_feats = self.features(nodes)
+            self_feats = self.features(nodes)
         # self-connection could be considered.
         # combined = torch.cat([self_feats, neigh_feats], dim=1)
-        combined = tf.concat([self_feats, neigh_feats], axis=1)
-        # combined = F.relu(self.linear1(combined))
-        # combined = tf.Variable(combined)
-        combined = tf.nn.relu(self.linear1(combined))
+            combined = tf.concat([self_feats, neigh_feats], axis=1)
+            # combined = F.relu(self.linear1(combined))
+            # combined = tf.Variable(combined)
+            combined = tf.nn.relu(self.linear1(combined))
+            tape.watch(combined)
 
-        return combined
+            return combined

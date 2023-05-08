@@ -125,7 +125,7 @@ def main():
     parser.add_argument('--embed_dim', type=int, default=64, metavar='N', help='embedding size')
     parser.add_argument('--lr', type=float, default=0.001, metavar='LR', help='learning rate')
     parser.add_argument('--test_batch_size', type=int, default=1000, metavar='N', help='input batch size for testing')
-    parser.add_argument('--epochs', type=int, default=5, metavar='N', help='number of epochs to train')
+    parser.add_argument('--epochs', type=int, default=20, metavar='N', help='number of epochs to train')
     args = parser.parse_args()
 
     os.environ['CUDA_VISIBLE_DEVICES'] = '0'
@@ -135,7 +135,7 @@ def main():
     device = torch.device("cuda" if use_cuda else "cpu")
 
     embed_dim = args.embed_dim
-    dir_data = './data/epinions'
+    dir_data = './data/epinions_up'
 
     path_data = dir_data + ".pickle"
     data_file = open(path_data, 'rb')

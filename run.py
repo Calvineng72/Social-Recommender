@@ -19,6 +19,7 @@ from math import sqrt
 import datetime
 import argparse
 import os
+import matplotlib as plt
 
 import tensorflow as tf
 
@@ -52,19 +53,19 @@ class GraphRec(tf.keras.Model):
 
         # torch.nn.Embedding(num_embeddings, embedding_dim, padding_idx=None, max_norm=None, norm_type=2.0, scale_grad_by_freq=False, sparse=False, _weight=None, _freeze=False, device=None, dtype=None)
         # u2e = nn.Embedding(num_users, embed_dim).to(device)
-        self.u2e = tf.keras.layers.Embedding(num_users, embed_dim)
+        self.u2e = tf.keras.layers.Embedding(num_users, embed_dim, name="u2e")
         # v2e = nn.Embedding(num_items, embed_dim).to(device)
-        self.v2e = tf.keras.layers.Embedding(num_items, embed_dim)
+        self.v2e = tf.keras.layers.Embedding(num_items, embed_dim, name="v2e")
         # r2e = nn.Embedding(num_ratings, embed_dim).to(device)
-        self.r2e = tf.keras.layers.Embedding(num_ratings, embed_dim)
+        self.r2e = tf.keras.layers.Embedding(num_ratings, embed_dim, name="r2e")
 
         # user feature
         # features: item * rating
         self.agg_u_history = UV_Aggregator(self.v2e, self.r2e, self.u2e, embed_dim, cuda=device, uv=True)
         self.enc_u_history = UV_Encoder(self.u2e, embed_dim, history_u_lists, history_ur_lists, self.agg_u_history, cuda=device, uv=True)
         # neighobrs
-        self.agg_u_social = Social_Aggregator(lambda nodes: tf.transpose(self.enc_u_history.call(nodes, True)), self.u2e, embed_dim, cuda=device)
-        self.enc_u = Social_Encoder(lambda nodes: tf.transpose(self.enc_u_history.call(nodes, True)), embed_dim, social_adj_lists, self.agg_u_social,
+        self.agg_u_social = Social_Aggregator(lambda nodes: tf.transpose(self.enc_u_history(nodes, True)), self.u2e, embed_dim, cuda=device)
+        self.enc_u = Social_Encoder(lambda nodes: tf.transpose(self.enc_u_history(nodes, True)), embed_dim, social_adj_lists, self.agg_u_social,
                             base_model=self.enc_u_history, cuda=device)
 
         # item feature: user * rating
@@ -103,8 +104,8 @@ class GraphRec(tf.keras.Model):
         self.criterion = tf.keras.losses.MeanSquaredError()
 
     def call(self, nodes_u, nodes_v, call_training):
-        embeds_u = self.enc_u.call(nodes_u, call_training)
-        embeds_v = self.enc_v_history.call(nodes_v, call_training)
+        embeds_u = self.enc_u(nodes_u, call_training)
+        embeds_v = self.enc_v_history(nodes_v, call_training)
 
         # x_u = F.relu(self.bn1(self.w_ur1(embeds_u)))
         x_u = tf.nn.relu(self.bn1(self.w_ur1(embeds_u)))
@@ -120,18 +121,19 @@ class GraphRec(tf.keras.Model):
         x_v = tf.keras.layers.Dropout(rate=0.5)(x_v, training=call_training)
         x_v = self.w_vr2(x_v)
 
-        # x_uv = torch.cat((x_u, x_v), 1)
-        x_uv = tf.concat((x_u, x_v), 1)
-        # x = F.relu(self.bn3(self.w_uv1(x_uv)))
-        x = tf.nn.relu(self.bn3(self.w_uv1(x_uv)))
-        # x = F.dropout(x, training=self.training)
-        x = tf.keras.layers.Dropout(rate=0.5)(x, training=call_training)
-        # x = F.relu(self.bn4(self.w_uv2(x)))
-        x = tf.nn.relu(self.bn4(self.w_uv2(x)))
-        # x = F.dropout(x, training=self.training)
-        x = tf.keras.layers.Dropout(rate=0.5)(x, training=call_training)
-        scores = self.w_uv3(x)
-        return tf.squeeze(scores)
+        with tf.GradientTape() as tape:
+            # x_uv = torch.cat((x_u, x_v), 1)
+            x_uv = tf.concat((x_u, x_v), 1)
+            # x = F.relu(self.bn3(self.w_uv1(x_uv)))
+            x = tf.nn.relu(self.bn3(self.w_uv1(x_uv)))
+            # x = F.dropout(x, training=self.training)
+            x = tf.keras.layers.Dropout(rate=0.5)(x, training=call_training)
+            # x = F.relu(self.bn4(self.w_uv2(x)))
+            x = tf.nn.relu(self.bn4(self.w_uv2(x)))
+            # x = F.dropout(x, training=self.training)
+            x = tf.keras.layers.Dropout(rate=0.5)(x, training=call_training)
+            scores = self.w_uv3(x)
+            return tf.squeeze(scores)
 
     # def loss(self, nodes_u, nodes_v, labels_list, training):
     #     scores = self.call(nodes_u, nodes_v, training)
@@ -147,7 +149,7 @@ def train(model, device, train_loader, optimizer, epoch, best_rmse, best_mae, tr
         batch_nodes_u, batch_nodes_v, labels_list = data
         with tf.GradientTape() as tape:
             # deleted the to device stufff
-            scores = model.call(batch_nodes_u, batch_nodes_v, training)
+            scores = model(batch_nodes_u, batch_nodes_v, training)
             loss = model.loss(scores, labels_list)
         gradients = tape.gradient(loss, model.trainable_variables)
         optimizer.apply_gradients(zip(gradients, model.trainable_variables))
@@ -193,7 +195,7 @@ def test(model, device, test_loader, training=False):
 
     #TODO: maybe pass a boolean is_training to call
     for test_u, test_v, tmp_target in test_loader:
-        val_output = model.call(test_u, test_v, training)
+        val_output = model(test_u, test_v, training)
         tmp_pred.append(list(val_output))
         target.append(list(tmp_target))
     tmp_pred = np.array(sum(tmp_pred, []))
@@ -209,7 +211,7 @@ def main():
     # Training settings #TODO og batch size was 128, making it 32
     # embed dim was 64 making it 32
     parser = argparse.ArgumentParser(description='Social Recommendation: GraphRec model')
-    parser.add_argument('--batch_size', type=int, default=32, metavar='N', help='input batch size for training')
+    parser.add_argument('--batch_size', type=int, default=128, metavar='N', help='input batch size for training')
     parser.add_argument('--embed_dim', type=int, default=32, metavar='N', help='embedding size')
     parser.add_argument('--lr', type=float, default=0.001, metavar='LR', help='learning rate')
     parser.add_argument('--test_batch_size', type=int, default=1000, metavar='N', help='input batch size for testing')
@@ -225,7 +227,7 @@ def main():
     device = tf.device("/GPU:0" if use_cuda else "/device:CPU:0")
 
     embed_dim = args.embed_dim
-    dir_data = './data/toy_dataset'
+    dir_data = './data/epinions_down'
 
     path_data = dir_data + ".pickle"
     data_file = open(path_data, 'rb')
@@ -297,7 +299,9 @@ def main():
     endure_count = 0
     # graphrec.build(tf.shape(train_loader))
     # print(graphrec.summary())
-
+    epochs = []
+    rmses = []
+    maes = []
     for epoch in range(1, args.epochs + 1):
 
         train(graphrec, device, train_loader, optimizer, epoch, best_rmse, best_mae, training=True)
@@ -314,9 +318,23 @@ def main():
         else:
             endure_count += 1
         print("rmse: %.4f, mae:%.4f " % (expected_rmse, mae))
+        epochs.append(epoch)
+        rmses.append(expected_rmse)
+        maes.append(mae)
 
         if endure_count > 5:
             break
+    
+    x = epochs
+    y = rmses
+    plt.plot(x, y, markers="o")
+    plt.title("RMSE per Epoch")
+    plt.savefig("./plots/RMSEs.jpg")
+    plt.clf()
+    ymaes = maes
+    plt.plot(x, ymaes, markers="o")
+    plt.title("MAE per Epoch")
+    plt.savefig("./plots/MAEs.jpg")
 
 
 if __name__ == "__main__":
