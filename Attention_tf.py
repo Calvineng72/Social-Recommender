@@ -1,6 +1,5 @@
 import tensorflow as tf
 from Bilinear_tf import Bilinear
-# from tensorflow.keras import layers
 
 
 class Attention(tf.keras.layers.Layer):
@@ -13,13 +12,11 @@ class Attention(tf.keras.layers.Layer):
         self.att3 = tf.keras.layers.Dense(1, name="Att_D3")
         self.softmax = tf.keras.layers.Softmax(axis=0)
 
-#TODO: whenever Attention gets called, might need to adjust boolean training
     def call(self, node1, u_rep, num_neighs, att_training):
         with tf.GradientTape() as tape:
             uv_reps = tf.repeat(u_rep, num_neighs)
             x = tf.concat([node1, tf.reshape(uv_reps, tf.shape(node1))], axis=1)
             x = self.bilinear((node1, tf.reshape(uv_reps, tf.shape(node1))))
-            # x = tf.Variable(x)
             x = tf.nn.relu(self.att1(x))
             x = tf.keras.layers.Dropout(0.5)(x, training=att_training)
             x = tf.nn.relu(self.att2(x))

@@ -21,21 +21,12 @@ class UV_Aggregator(tf.keras.layers.Layer):
         self.u2e = u2e
         self.device = cuda
         self.embed_dim = embed_dim
-        # self.w_r1 = nn.Linear(self.embed_dim * 2, self.embed_dim)
         self.w_r1 = tf.keras.layers.Dense(self.embed_dim, name="UVAgg_D1")
-        # self.w_r2 = nn.Linear(self.embed_dim, self.embed_dim)
         self.w_r2 = tf.keras.layers.Dense(self.embed_dim, name="UVAgg_D2")
         self.att = Attention(self.embed_dim)
 
     def call(self, nodes, history_uv, history_r, training):
         
-        # embed_matrix = torch.empty(len(history_uv), self.embed_dim, dtype=torch.float).to(self.device)
-        # arguments to torch.empty: 
-        # size (int...) – a sequence of integers defining the shape of the output tensor. Can be a variable number of arguments or a collection like a list or tuple.
-        # out (Tensor, optional) – the output tensor.
-        # dtype (torch.dtype, optional) – the desired data type of returned tensor. Default: if None, uses a global default (see torch.set_default_tensor_type()).
-
-        #alternatively, use with tf.device("/gpu=0"): above this line to set the device
         embed_matrix = tf.Variable(tf.zeros((len(history_uv), self.embed_dim)))
         with tf.GradientTape() as tape:
             for i in range(len(history_uv)):
@@ -53,27 +44,18 @@ class UV_Aggregator(tf.keras.layers.Layer):
                     uv_rep = self.v2e(nodes[i])
 
                 e_r = self.r2e(tf.convert_to_tensor(tmp_label))
-            # x = torch.cat((e_uv, e_r), 1)
                 x = tf.concat((e_uv, e_r), 1)
-                # x = F.relu(self.w_r1(x))
                 x = tf.nn.relu(self.w_r1(x))
                 tape.watch(x)
-                # o_history = F.relu(self.w_r2(x))
                 o_history = tf.nn.relu(self.w_r2(x))
 
                 att_w = self.att.call(o_history, uv_rep, num_history_item, training)
-                # att_history = torch.mm(o_history.t(), att_w)
                 att_history = tf.matmul(tf.transpose(o_history), att_w)
                 att_history = tf.transpose(att_history)
                 tape.watch(att_history)
-
-                # embed_matrix[i] = att_history
 
                 embed_matrix = embed_matrix[i].assign(tf.squeeze(att_history))
                 tape.watch(embed_matrix)
 
         to_feats = embed_matrix
-        # to_feats = tf.Variable(tf.convert_to_tensor(embed_matrix, dtype=tf.float32), dtype=tf.float32)
-        # to_feats = embed_matrix
-        # # to_feats = tf.Variable(tf.convert_to_tensor(embed_matrix, dtype=tf.float32), dtype=tf.float32)
         return to_feats

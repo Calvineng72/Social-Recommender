@@ -17,7 +17,6 @@ class UV_Encoder(tf.keras.layers.Layer):
         self.aggregator = aggregator
         self.embed_dim = embed_dim
         self.device = cuda
-        # self.linear1 = nn.Linear(2 * self.embed_dim, self.embed_dim)  #
         self.linear1 = tf.keras.layers.Dense(self.embed_dim, name="UVEnc_D1")
 
     def call(self, nodes, training):
@@ -31,11 +30,7 @@ class UV_Encoder(tf.keras.layers.Layer):
             neigh_feats = self.aggregator.call(nodes, tmp_history_uv, tmp_history_r, training)  # user-item network
 
             self_feats = self.features(nodes)
-        # self-connection could be considered.
-        # combined = torch.cat([self_feats, neigh_feats], dim=1)
             combined = tf.concat([self_feats, neigh_feats], axis=1)
-            # combined = F.relu(self.linear1(combined))
-            # combined = tf.Variable(combined)
             combined = tf.nn.relu(self.linear1(combined))
             tape.watch(combined)
 
