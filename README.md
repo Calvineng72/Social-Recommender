@@ -14,16 +14,16 @@ Necessary packages include:
   - argparse
 
 To run the program for Epinions dataset:
-'''
+```
 python3 run_val_epinions.py
-'''
+```
 To run the program for Douban dataset:
-'''
+```
 python3 run_val_douban.py
-'''
+```
 
 To train on the Brown Department GPU Grid:
-'''
+```
 qsub -l day -l vf=128G -l gpus=1 -N final_douban_val run_GRID_GPU.sh run_val_douban.py
 qsub -l day -l vf=128G -l gpus=1 -N final_epinions_val run_GRID_GPU.sh run_val_epinions1.py
-'''
+```
