@@ -130,7 +130,7 @@ def main():
     device = tf.device("/GPU:0" if use_cuda else "/device:CPU:0")
 
     embed_dim = args.embed_dim
-    dir_data = './data/epinions_down'
+    dir_data = './data/epinions_final'
 
     path_data = dir_data + ".pickle"
     data_file = open(path_data, 'rb')
