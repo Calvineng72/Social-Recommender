@@ -1,7 +1,6 @@
 import pickle
 import numpy as np
 import time
-import random
 from collections import defaultdict
 from UV_Encoders_tf import UV_Encoder
 from UV_Aggregators_tf import UV_Aggregator
@@ -10,12 +9,8 @@ from Social_Aggregators_tf import Social_Aggregator
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import mean_absolute_error
 from math import sqrt
-import datetime
 import argparse
-import os
 import matplotlib.pyplot as plt
-import time
-
 import tensorflow as tf
 
 """
