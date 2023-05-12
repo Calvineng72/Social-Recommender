@@ -1,3 +1,4 @@
+
 import pickle
 import numpy as np
 import time
@@ -14,26 +15,9 @@ import datetime
 import argparse
 import os
 import matplotlib.pyplot as plt
-import time
 
 import tensorflow as tf
 
-"""
-GraphRec: Graph Neural Networks for Social Recommendation. 
-Wenqi Fan, Yao Ma, Qing Li, Yuan He, Eric Zhao, Jiliang Tang, and Dawei Yin. 
-In Proceedings of the 28th International Conference on World Wide Web (WWW), 2019. Preprint[https://arxiv.org/abs/1902.07243]
-
-If you use this code, please cite our paper:
-```
-@inproceedings{fan2019graph,
-  title={Graph Neural Networks for Social Recommendation},
-  author={Fan, Wenqi and Ma, Yao and Li, Qing and He, Yuan and Zhao, Eric and Tang, Jiliang and Yin, Dawei},
-  booktitle={WWW},
-  year={2019}
-}
-```
-
-"""
 
 
 class GraphRec(tf.keras.Model):
@@ -42,23 +26,24 @@ class GraphRec(tf.keras.Model):
                  history_u_lists, history_ur_lists, history_v_lists, 
                  history_vr_lists, social_adj_lists):
         super(GraphRec, self).__init__()
+
+
         self.u2e = tf.keras.layers.Embedding(num_users, embed_dim, name="u2e")
         self.v2e = tf.keras.layers.Embedding(num_items, embed_dim, name="v2e")
         self.r2e = tf.keras.layers.Embedding(num_ratings, embed_dim, name="r2e")
-
-    # user feature
-    # features: item * rating
+        # user feature
+        # features: item * rating
         self.agg_u_history = UV_Aggregator(self.v2e, self.r2e, self.u2e, embed_dim, cuda=device, uv=True)
         self.enc_u_history = UV_Encoder(self.u2e, embed_dim, history_u_lists, history_ur_lists, self.agg_u_history, cuda=device, uv=True)
+        # neighbors
         self.agg_u_social = Social_Aggregator(lambda nodes: tf.transpose(self.enc_u_history(nodes, True)), self.u2e, embed_dim, cuda=device)
         self.enc_u = Social_Encoder(lambda nodes: tf.transpose(self.enc_u_history(nodes, True)), embed_dim, social_adj_lists, self.agg_u_social,
                             base_model=self.enc_u_history, cuda=device)
-
         # item feature: user * rating
         self.agg_v_history = UV_Aggregator(self.v2e, self.r2e, self.u2e, embed_dim, cuda=device, uv=False)
         self.enc_v_history = UV_Encoder(self.v2e, embed_dim, history_v_lists, history_vr_lists, self.agg_v_history, cuda=device, uv=False)
-        self.embed_dim = self.enc_u.embed_dim
 
+        self.embed_dim = self.enc_u.embed_dim
         self.w_ur1 = tf.keras.layers.Dense(self.embed_dim)
         self.w_ur2 = tf.keras.layers.Dense(self.embed_dim)
         self.w_vr1 = tf.keras.layers.Dense(self.embed_dim)
@@ -80,19 +65,18 @@ class GraphRec(tf.keras.Model):
         x_u = tf.keras.layers.Dropout(rate=0.5)(x_u, training=call_training)
         x_u = self.w_ur2(x_u)
 
-
-        
         x_v = tf.nn.relu(self.bn2(self.w_vr1(embeds_v)))
         x_v = tf.keras.layers.Dropout(rate=0.5)(x_v, training=call_training)
         x_v = self.w_vr2(x_v)
 
-        x_uv = tf.concat((x_u, x_v), 1)
-        x = tf.nn.relu(self.bn3(self.w_uv1(x_uv)))
-        x = tf.keras.layers.Dropout(rate=0.5)(x, training=call_training)
-        x = tf.nn.relu(self.bn4(self.w_uv2(x)))
-        x = tf.keras.layers.Dropout(rate=0.5)(x, training=call_training)
-        scores = self.w_uv3(x)
-        return tf.squeeze(scores)
+        with tf.GradientTape() as tape:
+            x_uv = tf.concat((x_u, x_v), 1)
+            x = tf.nn.relu(self.bn3(self.w_uv1(x_uv)))
+            x = tf.keras.layers.Dropout(rate=0.5)(x, training=call_training)
+            x = tf.nn.relu(self.bn4(self.w_uv2(x)))
+            x = tf.keras.layers.Dropout(rate=0.5)(x, training=call_training)
+            scores = self.w_uv3(x)
+            return tf.squeeze(scores)
 
     def loss(self, scores, labels_list):
         return self.criterion(scores, labels_list)
@@ -102,7 +86,7 @@ def train(model, device, train_loader, optimizer, epoch, best_rmse, best_mae, tr
     running_loss = 0.0
     for i, data in enumerate(train_loader, 0):
         batch_nodes_u, batch_nodes_v, labels_list = data
-        with tf.GradientTape(persistent=True) as tape:
+        with tf.GradientTape() as tape:
             scores = model(batch_nodes_u, batch_nodes_v, training)
             loss = model.loss(scores, labels_list)
             print("scores + labels list")
@@ -115,7 +99,6 @@ def train(model, device, train_loader, optimizer, epoch, best_rmse, best_mae, tr
             print('[%d, %5d] loss: %.3f, The best rmse/mae: %.6f / %.6f' % (
                 epoch, i, running_loss / 100, best_rmse, best_mae))
             running_loss = 0.0
-
     return 0
 
 
@@ -134,7 +117,6 @@ def test(model, device, test_loader, training=False):
     return expected_rmse, mae
 
 
-
 def main():
     parser = argparse.ArgumentParser(description='Social Recommendation: GraphRec model')
     parser.add_argument('--batch_size', type=int, default=128, metavar='N', help='input batch size for training')
@@ -148,7 +130,7 @@ def main():
     device = tf.device("/GPU:0" if use_cuda else "/device:CPU:0")
 
     embed_dim = args.embed_dim
-    dir_data = './data/epinions_final'
+    dir_data = './data/epinions_down'
 
     path_data = dir_data + ".pickle"
     data_file = open(path_data, 'rb')
@@ -167,7 +149,7 @@ def main():
     social_adj_lists: user's connected neighborhoods
     ratings_list: rating value from 0.5 to 4.0 (8 opinion embeddings)
     """
-
+   
     trainset = tf.data.Dataset.from_tensor_slices([tf.convert_to_tensor(train_u, dtype=tf.float32), tf.convert_to_tensor(train_v, dtype=tf.float32), tf.convert_to_tensor(train_r, dtype=tf.float32)])
     testset = tf.data.Dataset.from_tensor_slices([tf.convert_to_tensor(test_u, dtype=tf.float32), tf.convert_to_tensor(test_v, dtype=tf.float32), tf.convert_to_tensor(test_r, dtype=tf.float32)])
     valset = tf.data.Dataset.from_tensor_slices([tf.convert_to_tensor(val_u, dtype=tf.float32), tf.convert_to_tensor(val_v, dtype=tf.float32), tf.convert_to_tensor(val_r, dtype=tf.float32)])
@@ -177,7 +159,7 @@ def main():
     num_users = history_u_lists.__len__()
     num_items = history_v_lists.__len__()
     num_ratings = ratings_list.__len__()
-
+   
     graphrec = GraphRec(num_users, embed_dim, num_items, num_ratings, device, history_u_lists, 
                         history_ur_lists, history_v_lists, history_vr_lists, 
                         social_adj_lists)
@@ -192,8 +174,9 @@ def main():
     for epoch in range(1, args.epochs + 1):
 
         train(graphrec, device, train_loader, optimizer, epoch, best_rmse, best_mae, training=True)
-        expected_rmse, mae = test(graphrec, device, val_loader, training=False)
 
+        expected_rmse, mae = test(graphrec, device, val_loader, training=False)
+        # early stopping (no validation set in toy dataset)
         if best_rmse > expected_rmse:
             best_rmse = expected_rmse
             best_mae = mae
@@ -212,9 +195,9 @@ def main():
     y = rmses
     plt.plot(x, y)
     plt.title("RMSE per Epoch on Epinions Dataset")
+    atime = str(time.time())
     plt.xlabel("Epoch")
     plt.ylabel("Root-Mean-Square Error")
-    atime = str(time.time())
     plt.savefig("/home/ewang96/DLFinal/finplots/RMSEs_epinions" + atime + ".jpg")
     plt.clf()
     ymaes = maes

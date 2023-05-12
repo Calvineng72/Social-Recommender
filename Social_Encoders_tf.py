@@ -6,7 +6,7 @@
 import tensorflow as tf
 
 
-class Social_Encoder(tf.keras.layers.Layer): #layers.Layer?
+class Social_Encoder(tf.keras.layers.Layer): 
 
     def __init__(self, features, embed_dim, social_adj_lists, aggregator, base_model=None, cuda="/device:CPU:0"):
         super(Social_Encoder, self).__init__()

@@ -3,7 +3,7 @@ import random
 from Attention_tf import Attention
 import tensorflow as tf
 
-class Social_Aggregator(tf.keras.layers.Layer): #TODO: or is it layers.Layer
+class Social_Aggregator(tf.keras.layers.Layer): 
     """
     Social Aggregator: for aggregating embeddings of social neighbors.
     """
