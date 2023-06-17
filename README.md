@@ -1,4 +1,4 @@
-# DLFinal
+# Graph Neural Networks for Social Reccomendation
 
 We examine datasets from product review websites  with social components to create a product recommendation network using Graph Neural Networks (GNNs). The objective is to generate accurate product recommendations for different users based on their own rating histories and the rating histories of people they trust, where trust is conveyed through following other users. Using GNNs, we aim to see better results than other networks designed for social recommendations like PMF, Soec, SoReg etc. The problem is one of structured prediction: it uses the connections between users on a platform to create predictions based on their previous interactions and social network.
 
