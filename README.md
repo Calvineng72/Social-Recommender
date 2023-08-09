@@ -7,14 +7,7 @@ The following project is a reimplementation in TensorFlow of the GraphRec model 
 ## Data
 The two datasets used are [Epinions](https://snap.stanford.edu/data/soc-Epinions1.html) and [Douban](https://www.kaggle.com/datasets/fengzhujoey/douban-datasetratingreviewside-information). Due to memory constraints, the datasets are downsized for training. 
 ## Getting Started
-Necessary packages include:
-  - pickle
-  - numpy
-  - tensorflow
-  - time
-  - sklearn
-  - matplotlib
-  - argparse
+Necessary packages include: `pickle`, `numpy`, `tensorflow`, `sklearn`, `matplotlib`
 
 To run the program for the Epinions dataset:
 ```
