@@ -1,5 +1,5 @@
 # Social Recommendation with Graph Neural Networks
-### Authors: Calvin Eng, Isha Mody, Emily Wang, Jennifer Wang
+### Authors: Calvin Eng, Isha Mody, Emily Wang, and Jennifer Wang
 Link to Paper-
 https://drive.google.com/file/d/1CQrVsUxFxehLlPq2n4wvhvbVS_T1-gGY/view
 ## Project Details
